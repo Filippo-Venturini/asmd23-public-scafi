@@ -172,14 +172,18 @@ object DemoPartition extends Simulation[Partition]
 class Channel extends AggregateProgramSkeleton:
 
   def gradient(source: Boolean) = rep(Double.MaxValue):
-    d => mux[Double](source){0.0}{minHoodPlus(nbr{d}+nbrRange())}
-  def distance(source: Boolean, destination: Boolean) =
-    //gradient(source)
-
-    broadcast(destination, mid(), 0)
-
-  def broadcast(source: Boolean, input: Double, default: Double) = rep((Double.MaxValue, default)):
+    d => mux(source){0.0}{minHoodPlus(nbr{d}+nbrRange)}
+  def broadcast(source: Boolean, input: Double) = rep((Double.MaxValue, Double.MaxValue)):
     d => mux(source){(0.0, input)}{minHoodPlus(nbr{d._1}+nbrRange, nbr{d._2})}
-  override def main() = gradient(sense1)
+  def distance(source: Boolean, destination: Boolean) =
+      broadcast(source, gradient(destination))
+
+  def dilate(region: Boolean, width: Double)=
+    gradient(region) < width
+
+  def channel(source: Boolean, destination: Boolean, width: Double)=
+    dilate((gradient(source) + gradient(destination)) <= distance(source, destination)._2, width)
+
+  override def main() = channel(sense1, sense2, 100.0)
 
 object DemoChannel extends Simulation[Channel]
