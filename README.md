@@ -43,7 +43,7 @@ In this last example it perform the gradient calculation, but if some node has t
 
 ## Partition
 
-In the above code, a function for realize partitions is crafted:
+In the following code, a function for realize partitions is crafted:
 
 ```
 class Partition extends AggregateProgramSkeleton:
@@ -56,3 +56,36 @@ class Partition extends AggregateProgramSkeleton:
 
 The overall idea, is to accumulate pairs of distance from the source of the partition and the correspondent ID. For make the function general, it takes as input the ID of the sources,
 and basing on that configure each node during the rep as a source node of the partition or not.
+
+
+## Channel
+
+These are the functions designed for handle the channel behaviour:
+
+```
+class Channel extends AggregateProgramSkeleton:
+
+  def gradient(source: Boolean) = rep(Double.MaxValue):
+    d => mux(source){0.0}{minHoodPlus(nbr{d}+nbrRange)}
+    
+  def broadcast(source: Boolean, input: Double) = rep((Double.MaxValue, Double.MaxValue)):
+    d => mux(source){(0.0, input)}{minHoodPlus(nbr{d._1}+nbrRange, nbr{d._2})}
+    
+  def distance(source: Boolean, destination: Boolean) =
+      broadcast(source, gradient(destination))
+
+  def dilate(region: Boolean, width: Double)=
+    gradient(region) < width
+
+  def channel(source: Boolean, destination: Boolean, width: Double)=
+    dilate((gradient(source) + gradient(destination)) <= distance(source, destination)._2, width)
+```
+
+First of all there is a function to simply calculate the **gradient** from a source.
+
+Then the idea of the **broadcast** function is to start from the source with the **input** value, 
+and then basing on the distance between nodes, it propagates the value obtained as the minimum in the neighborhood (distance, value).
+
+The **distance** is calculated by broadcasting the gradient from the destination.
+
+Then all these functions are combined for realize the **channel** adding a dilatation operation with an arbitrary value.
